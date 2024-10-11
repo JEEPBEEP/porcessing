@@ -13,6 +13,15 @@ int secondCardX = -1, secondCardY = -1; // Store the second card's position
 boolean waitingForSecondCard = false;
 int delayCounter = 0;
 boolean isSelectedMode = false;    //boolean value to determine if player has selectedMode before the game start
+int playerTurn = 0;    //determine the current turn 0 = player 1 ---- 1 = player 2
+int playerScore[] = {0, 0};
+int counterTimer = 0;
+int limitTime = 20;
+String positionX = "";
+String positionY = "";
+int previousTime = 0;
+int currentTime = 0;
+int countdownTime = 20;
 
 void setup() {
   size(1000, 800);
@@ -27,6 +36,58 @@ void setup() {
 }
 
 void draw() {
+  if (isSelectedMode) {
+    background(255);
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        int x = j * (cardWidth + 10);
+        int y = i * (cardHeight + 10);
+
+        if (cardFlipped[i][j] == 0) {
+          flipCard(x, y);
+        } else if (cardFlipped[i][j] == 1) {
+          memoryGame(x, y, cardValues[i][j]);
+        }
+      }
+    }
+
+    // Handle delay for mismatched cards
+    if (waitingForSecondCard) {
+      delayCounter++;
+      if (delayCounter > 30) { // Show the cards for a short duration
+        cardFlipped[firstCardY][firstCardX] = 0; // Flip back first card
+        cardFlipped[secondCardY][secondCardX] = 0; // Flip back second card
+        waitingForSecondCard = false; // Reset
+        firstCardX = -1;
+        firstCardY = -1;
+        secondCardX = -1;
+        secondCardY = -1;
+        delayCounter = 0; // Reset delay counter
+      }
+    }
+    String temp1 = "Player 1 score : " + str(playerScore[0]);
+    String temp2 = "Player 2 score : " + str(playerScore[1]);
+    text(temp1, 700, 50);
+    text(temp2, 700, 100);
+    if (playerTurn == 0) {
+      text("Player1's turn", 700, 200);
+    } else {
+      text("Player2's turn", 700, 200);
+    }
+    if (firstCardX != -1) {
+      temp1 = "Hint next card is " + positionX + " of your card and " + positionY + " of your card";
+      text(temp1, 700, 250);
+    }
+    //println(counterTimer/60);
+    counterTimer++;
+    currentTime = counterTimer/60;
+    //countdownTime += 1;
+    if (currentTime - previousTime == limitTime) {
+      swapTurn();
+    }
+    temp1 = "time : " + str(countdownTime);
+    text(temp1, 700, 150);
+  }
 }
 
 void mousePressed() {
@@ -59,10 +120,42 @@ void mousePressed() {
         println();
       }
     }
+  } else {
+    if (waitingForSecondCard) {
+      return;
+    }
+
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        int x = j * (cardWidth + 10);
+        int y = i * (cardHeight + 10);
+
+        if (mouseX > x && mouseX < x + cardWidth && mouseY > y && mouseY < y + cardHeight) {
+          if (cardFlipped[i][j] == 0) {
+            cardFlipped[i][j] = 1; // Flip the card
+
+            if (firstCardX == -1) {
+              // First card flipped
+              firstCardX = j;
+              firstCardY = i;
+              findHint(cardValues[firstCardY][firstCardX], firstCardY, firstCardX);
+            } else {
+              // Second card flipped
+              secondCardX = j;
+              secondCardY = i;
+              positionX = "";
+              positionY = "";
+              waitingForSecondCard = true;
+              checkForMatch(); // Check if the cards match
+            }
+          }
+        }
+      }
+    }
   }
 }
 
-//void 
+//void
 
 void initializeMode() {
   int button_h = 80, button_w = 150;
@@ -103,12 +196,12 @@ void initializeCardValues() {
       cardValues[i][j] = flatValues[i * cols + j];
     }
   }
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      print(cardValues[i][j] + " ");
-    }
-    println();
-  }
+  //for (int i = 0; i < rows; i++) {
+  //  for (int j = 0; j < cols; j++) {
+  //    print(cardValues[i][j] + " ");
+  //  }
+  //  println();
+  //}
 }
 
 void shuffleCards() {
@@ -132,4 +225,72 @@ void shuffleCards() {
       cardValues[i][j] = flatValues[i * cols + j];
     }
   }
+}
+
+void removeMatchedCards(int y1, int x1, int y2, int x2) {
+  // Set the matched cards as flipped permanently
+  cardFlipped[y1][x1] = 2; // Mark as matched
+  cardFlipped[y2][x2] = 2; // Mark as matched
+
+  // Reset the card positions for the next turn
+  firstCardX = -1;
+  firstCardY = -1;
+  secondCardX = -1;
+  secondCardY = -1;
+  waitingForSecondCard = false; // Reset
+}
+
+void checkForMatch() {
+  // Check if the values of the first and second card match
+  if (cardValues[firstCardY][firstCardX] == cardValues[secondCardY][secondCardX]) {
+    // Cards match; remove them
+    removeMatchedCards(firstCardY, firstCardX, secondCardY, secondCardX);
+    playerScore[playerTurn] += 1;
+  }
+  swapTurn();
+}
+
+void memoryGame(int x, int y, int number) {
+  line(x, y, x + cardWidth, y);
+  line(x, y, x, y + cardHeight);
+  line(x + cardWidth, y, x + cardWidth, y + cardHeight);
+  line(x, y + cardHeight, x + cardWidth, y + cardHeight);
+
+  fill(0);
+  text(number, x + cardWidth / 2, y + cardHeight / 2);
+}
+
+void flipCard(int x, int y) {
+  fill(150);
+  rect(x, y, cardWidth, cardHeight);
+}
+
+void findHint(int value, int x1, int y1) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      if (i == x1 && j == y1)
+        continue;
+      else if (cardValues[i][j] == value) {
+        if (i < x1)
+          positionX = "above";
+        else if (i > x1)
+          positionX = "below";
+        else
+          positionX = "in the same line";
+        if (j > y1)
+          positionY = "right";
+        else if (j < y1)
+          positionY = "left";
+        else
+          positionY = "in the same line";
+        break;
+      }
+    }
+  }
+}
+
+void swapTurn() {
+  playerTurn = (playerTurn + 1) % 2;
+  previousTime = currentTime;
+  countdownTime = limitTime;
 }
