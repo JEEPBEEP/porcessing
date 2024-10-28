@@ -13,6 +13,7 @@ int secondCardX = -1, secondCardY = -1; // Store the second card's position
 boolean waitingForSecondCard = false;
 int delayCounter = 0;
 boolean isSelectedMode = false;    //boolean value to determine if player has selectedMode before the game start
+boolean devMode = false; // Developer mode flag
 int playerTurn = 0;    //determine the current turn 0 = player 1 ---- 1 = player 2
 int playerScore[] = {0, 0};
 int counterTimer = 0;
@@ -35,6 +36,7 @@ void setup() {
   initializeMode();
 }
 
+
 void draw() {
   if (isSelectedMode) {
     background(255);
@@ -47,6 +49,12 @@ void draw() {
           flipCard(x, y);
         } else if (cardFlipped[i][j] == 1) {
           memoryGame(x, y, cardValues[i][j]);
+        }
+        if (devMode) {      //dev mode
+          if (cardFlipped[i][j] != 2) {
+            fill(0); // Set text color to black
+            text(cardValues[i][j], x + cardWidth - 15, y + cardHeight - 15); // Bottom right corner
+          }
         }
       }
     }
@@ -65,32 +73,51 @@ void draw() {
         delayCounter = 0; // Reset delay counter
       }
     }
+
+    // Display scores and current turn
     String temp1 = "Player 1 score : " + str(playerScore[0]);
     String temp2 = "Player 2 score : " + str(playerScore[1]);
     text(temp1, 700, 50);
     text(temp2, 700, 100);
+
     if (playerTurn == 0) {
       text("Player1's turn", 700, 200);
     } else {
       text("Player2's turn", 700, 200);
     }
+
+    // Display hint if a card is flipped
     if (firstCardX != -1) {
       temp1 = "Hint next card is " + positionX + " of your card and " + positionY + " of your card";
       text(temp1, 700, 250);
     }
-    //println(counterTimer/60);
+
+    // Update and display the timer
     counterTimer++;
-    currentTime = counterTimer/60;
-    //countdownTime += 1;
-    if (currentTime - previousTime == limitTime) {
-      swapTurn();
+    if (counterTimer >= 60) { // Update every second
+      countdownTime--;
+      counterTimer = 0; // Reset counter timer
     }
-    temp1 = "time : " + str(countdownTime);
+
+    if (countdownTime <= 0) {
+      swapTurn(); // Swap turn if time runs out
+    }
+
+    temp1 = "Time left: " + str(countdownTime);
     text(temp1, 700, 150);
+
+    fill(255);
+    rect(820, 50, 175, 40);
+    fill(0);
+    text(devMode ? "Disable Dev Mode" : "Enable Dev Mode", 850 + 60, 70);
   }
 }
 
 void mousePressed() {
+  // Check if the developer mode button is clicked
+  if (mouseX > 850 && mouseX < 970 && mouseY > 50 && mouseY < 90) {
+    devMode = !devMode; // Toggle developer mode
+  }
   if (!isSelectedMode) {  //Ignore clicks if haven't selected mode yet
     if (mouseX >= 0 && mouseX <= 150 && mouseY >= 0 && mouseY <= 240) {
       int pos_y = ceil(mouseY/80);
@@ -291,6 +318,7 @@ void findHint(int value, int x1, int y1) {
 
 void swapTurn() {
   playerTurn = (playerTurn + 1) % 2;
-  previousTime = currentTime;
-  countdownTime = limitTime;
+  previousTime = currentTime; // Update previous time to current for next swap
+  countdownTime = limitTime; // Reset countdown time for the next player
+  counterTimer = 0; // Reset the counter timer
 }
